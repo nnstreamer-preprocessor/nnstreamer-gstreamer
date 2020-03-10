@@ -42,9 +42,9 @@
 int want = 1;
 //double frame[640][64]={0,}; //@dw 20.03.09
 double frame[630][64]={0,}; //@dw 20.03.09
-double frame2[1024][640]={0,};
+//double frame2[1024][640]={0,};
 
-static void prepare_buffer(GstAppSrc* appsrc, char *index) {
+static void prepare_buffer(GstAppSrc* appsrc, int index) {
 
   //static gboolean white = FALSE;
   static GstClockTime timestamp = 0;
@@ -55,17 +55,25 @@ static void prepare_buffer(GstAppSrc* appsrc, char *index) {
 
   ////////////////////////////////////
 
-  char filename[14];
+  char filename[16];
   char s2[13]="data_point/";
-  sprintf(filename,"00000000%s.txt",index);
+  
+  if(10>index){
+    sprintf(filename,"000000000%d.txt",index);
+  }else if(99>= index && index>=10){
+    sprintf(filename,"00000000%d.txt",index);
+  }else if(999>= index && index>=100){
+    sprintf(filename,"0000000%d.txt",index);
+  }
+  
+  
   char *filename2=strcat(s2, filename);
   printf("%s\n", filename2);
 
   FILE* fp;
   fp = fopen(filename2,"r");
   double read_num, x, y, z;
-  double xy_theta, z_theta, range, xy_theta_round, y_theta_round;
-  double dif_chk_xy, dif_chk_y;
+  double xy_theta, z_theta, range;
   double val = 57.2958;
 
   int cnt=1;
@@ -77,13 +85,13 @@ static void prepare_buffer(GstAppSrc* appsrc, char *index) {
     if(cnt%4==0){
         //calculate
         xy_theta=atan(y/x)*val+45;
-        z_theta=atan(z/x)*val+5;
+        z_theta=round(atan(z/x)*val+5);
         if( 0<z_theta & z_theta<=64 & 0< xy_theta & xy_theta<=90 ){
                
             range=round(sqrt(x*x+y*y+z*z)*100)/100;
-            xy_theta=xy_theta*7;
-            xy_theta_round=round(xy_theta);
-            y_theta_round=round(z_theta);
+            xy_theta=round(xy_theta*7);
+            //xy_theta_round=round(xy_theta);
+            //y_theta_round=round(z_theta);
                
             frame[(int)xy_theta][(int)z_theta]=range;       
             //printf("range=%f  z_theta=%f  xy_theta=%f \n", range, z_theta , xy_theta);//frame=%f\n , frame[(int)xy_theta][(int)z_theta]             
@@ -647,9 +655,15 @@ int
 main (int argc, char ** argv)
 {
 
-
-  char *file_list[11]={"00","01","02","03","04","05","06","07","08","09","10"}; //@dw 20.03.08
-
+  
+  //char *file_list[11]={"00","01","02","03","04","05","06","07","08","09","10"}; //@dw 20.03.08
+  /////
+  int file_list[157]={0,};
+  for(int i=0; i<157;i++){
+      file_list[i]=i;
+      //printf("ss==%ld",sizeof(file_list));
+  }
+  ////
 
   const gchar tf_model_path[] = "./tf_model";
 
