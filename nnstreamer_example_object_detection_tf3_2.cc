@@ -681,7 +681,7 @@ main (int argc, char ** argv)
   g_app.detected_objects.clear ();
   g_mutex_init (&g_app.mutex);
   //#endif
-
+  tf_init_info (&g_app.tf_info, tf_model_path);
   //_check_cond_err (tf_init_info (&g_app.tf_info, tf_model_path));
 
   /* init gstreamer */
