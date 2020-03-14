@@ -71,8 +71,8 @@ int file_i=0;
 //     } \
 //   } while (0)
 
-#define VIDEO_WIDTH     640
-#define VIDEO_HEIGHT    480
+#define VIDEO_WIDTH     630
+#define VIDEO_HEIGHT    64
 
 #define BOX_SIZE        4
 #define LABEL_SIZE      91
@@ -699,7 +699,7 @@ main (int argc, char ** argv)
       "t_raw. ! queue ! videoconvert ! cairooverlay name=tensor_res ! ximagesink name=img_tensor "
       "t_raw. ! queue leaky=2 max-size-buffers=2 ! videoscale ! tensor_converter ! "
       "tensor_filter framework=tensorflow model=%s "
-      "input=3:630:64:1 inputname=image_tensor inputtype=float32 "
+      "input=3:630:64:1 inputname=image_tensor inputtype=uint8 "
       "output=1,100:1,100:1,4:100:1 "
       "outputname=num_detections,detection_classes,detection_scores,detection_boxes "
       "outputtype=float32,float32,float32,float32 ! "
