@@ -44,7 +44,7 @@
 
 // @yh 20.03.09 As you can see, this below code is made by DH.kim
 //double frame[640][64]={0,}; //@dw 20.03.09
-double frame[630][64]={0,}; //@dw 20.03.09
+int frame[630][64]={0,}; //@dw 20.03.09
 int file_i=0;
 //double frame2[1024][640]={0,};
 
@@ -55,6 +55,7 @@ int file_i=0;
 #ifndef DBG
 #define DBG FALSE
 #endif
+
 
 /**
  * @brief Macro for debug message.
@@ -72,8 +73,8 @@ int file_i=0;
 //     } \
 //   } while (0)
 
-#define VIDEO_WIDTH     640
-#define VIDEO_HEIGHT    480
+#define VIDEO_WIDTH     630
+#define VIDEO_HEIGHT    64
 
 #define BOX_SIZE        4
 #define LABEL_SIZE      91
@@ -577,7 +578,7 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
             //xy_theta_round=round(xy_theta);
             //y_theta_round=round(z_theta);
                
-            frame[(int)xy_theta][(int)z_theta]=range;       
+            frame[(int)xy_theta][(int)z_theta]=(int)range;       
             //printf("range=%f  z_theta=%f  xy_theta=%f \n", range, z_theta , xy_theta);//frame=%f\n , frame[(int)xy_theta][(int)z_theta]             
         }
 
@@ -608,22 +609,25 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
 
   printf("number of point cnt=%d\n",cnt/4); 
 
+  
   fclose(fp);
   ////////////////////////////////////
-
 
   /////////////////////
   size = 630*64*2; 
   buffer = gst_buffer_new_wrapped_full( (GstMemoryFlags)0, (gpointer)frame, size, 0, size, NULL, NULL );
-  ////////////////////////
 
+  ////////////////////////
 
   GST_BUFFER_PTS (buffer) = timestamp;
   GST_BUFFER_DURATION (buffer) = gst_util_uint64_scale_int (1, GST_SECOND, 4);
 
   timestamp += GST_BUFFER_DURATION (buffer);
 
+
   ret = gst_app_src_push_buffer(appsrc, buffer);
+
+  
 
   if (ret != GST_FLOW_OK) {
     /* something wrong, stop pushing */
@@ -636,6 +640,7 @@ static void
 start_feed (GstElement * pipeline, guint size, AppData * app)
 {
   if (app->sourceid == 0) {
+
     GST_DEBUG ("start feeding");
     prepare_buffer((GstAppSrc*)app->appsrc, file_i);
     g_main_context_iteration(g_main_context_default(),FALSE);
@@ -681,6 +686,7 @@ main (int argc, char ** argv)
   g_app.detected_objects.clear ();
   g_mutex_init (&g_app.mutex);
   //#endif
+  
   tf_init_info (&g_app.tf_info, tf_model_path);
   //_check_cond_err (tf_init_info (&g_app.tf_info, tf_model_path));
 
@@ -693,6 +699,8 @@ main (int argc, char ** argv)
   //_check_cond_err (g_app.loop != NULL);
 
   /* init pipeline */
+
+
 
    str_pipeline =
       g_strdup_printf
@@ -713,18 +721,10 @@ main (int argc, char ** argv)
   g_app.pipeline = gst_parse_launch (str_pipeline, NULL);
   g_free (str_pipeline);
   //_check_cond_err (g_app.pipeline != NULL);
-
-
-  // setup pipeline
+  
   g_app.appsrc = gst_bin_get_by_name(GST_BIN(g_app.pipeline),"src");
   g_assert(g_app.appsrc);
   g_assert(GST_IS_APP_SRC(g_app.appsrc));
-
-  g_signal_connect (g_app.appsrc, "need-data", G_CALLBACK (start_feed), &g_app);
-  g_signal_connect (g_app.appsrc, "enough-data", G_CALLBACK (stop_feed), &g_app);
-  // g_signal_connect (g_app.appsrc, "need-data", G_CALLBACK (start_feed), NULL);
-  // g_signal_connect (g_app.appsrc, "enough-data", G_CALLBACK (stop_feed), NULL);
-  
 
 /* setup */
   g_object_set (G_OBJECT (g_app.appsrc), "caps",
@@ -738,14 +738,20 @@ main (int argc, char ** argv)
   /* setup appsrc */
   g_object_set (G_OBJECT (g_app.appsrc),
     "stream-type", 0, // GST_APP_STREAM_TYPE_STREAM
-    "format", GST_FORMAT_TIME,
+    "format", GST_FORMAT_TIME,//GST_FORMAT_TIME
         "is-live", TRUE,
     NULL);
 
   _print_log ("%s\n", str_pipeline);
 
 
+  // setup pipeline
+ 
 
+  g_signal_connect (g_app.appsrc, "need-data", G_CALLBACK (start_feed), &g_app);
+  g_signal_connect (g_app.appsrc, "enough-data", G_CALLBACK (stop_feed), &g_app);
+
+ 
   /* bus and message callback */
   g_app.bus = gst_element_get_bus (g_app.pipeline);
   //_check_cond_err (g_app.bus != NULL);
@@ -758,6 +764,7 @@ main (int argc, char ** argv)
   g_signal_connect (element, "new-data", G_CALLBACK (new_data_cb), NULL);
   gst_object_unref (element);
 
+   
   /* cairo overlay */
   element = gst_bin_get_by_name (GST_BIN (g_app.pipeline), "tensor_res");
   g_signal_connect (element, "draw", G_CALLBACK (draw_overlay_cb), NULL);
@@ -769,17 +776,21 @@ main (int argc, char ** argv)
   gst_element_set_state (g_app.pipeline, GST_STATE_PLAYING);
   g_app.running = TRUE;
 
+
+  
   /* set window title */
   set_window_title ("img_tensor", "NNStreamer Example");
 
+ 
   /* run main loop */
   g_main_loop_run (g_app.loop);
 
+   printf("asdfasdf\n");
   /* quit when received eos or error message */
   g_app.running = FALSE;
 
   /* cam source element */
-  element = gst_bin_get_by_name (GST_BIN (g_app.pipeline), "src");
+  //element = gst_bin_get_by_name (GST_BIN (g_app.pipeline), "src");
 
   gst_element_set_state (element, GST_STATE_READY);
   gst_element_set_state (g_app.pipeline, GST_STATE_READY);
@@ -791,6 +802,8 @@ main (int argc, char ** argv)
 
   g_usleep (200 * 1000);
   gst_object_unref (element);
+
+
 
 error:
   _print_log ("close app..");
