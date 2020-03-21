@@ -20,6 +20,9 @@
 #define _GNU_SOURCE
 #endif
 
+
+//#define _CRTDBG_MAP_ALLOC
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -42,11 +45,25 @@
 #include <cairo.h>
 #include <cairo-gobject.h>
 
+#include <execinfo.h>
+
+
+//#include <crtdbg.h> 
+
+/**
+#if _DEBUG 
+#define new new(_NORMAL_BLOCK, __FILE__, __LINE__) 
+#define malloc(s) _malloc_dbg(s, _NORMAL_BLOCK, __FILE__, __LINE__) 
+#endif
+*/
+//using namespace std;
+
+
 // @yh 20.03.09 As you can see, this below code is made by DH.kim
 //double frame[640][64]={0,}; //@dw 20.03.09
 int frame[630][64]={0,}; //@dw 20.03.09
-int file_i=0;
 //double frame2[1024][640]={0,};
+int file_i=0;
 
 
 /**
@@ -123,7 +140,6 @@ typedef struct
   ///
   GstElement *appsrc;
   guint sourceid;
-
   ///
 
   GMutex mutex; /**< mutex for processing */
@@ -571,9 +587,9 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
         //calculate
         xy_theta=atan(y/x)*val+45;
         z_theta=round(atan(z/x)*val+5);
-        if( 0<z_theta & z_theta<=64 & 0< xy_theta & xy_theta<=90 ){
+        if( 0<z_theta & z_theta<=64 & 0< xy_theta & xy_theta<=89 ){
                
-            range=round(sqrt(x*x+y*y+z*z)*100)/100;
+            range=round(sqrt(x*x+y*y+z*z)*100);
             xy_theta=round(xy_theta*7);
             //xy_theta_round=round(xy_theta);
             //y_theta_round=round(z_theta);
@@ -581,7 +597,6 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
             frame[(int)xy_theta][(int)z_theta]=(int)range;       
             //printf("range=%f  z_theta=%f  xy_theta=%f \n", range, z_theta , xy_theta);//frame=%f\n , frame[(int)xy_theta][(int)z_theta]             
         }
-
       /**
         x=(round(x)+320);
         y=(round(y)+612);
@@ -631,7 +646,7 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
 
   if (ret != GST_FLOW_OK) {
     /* something wrong, stop pushing */
-    // g_main_loop_quit (loop);
+    g_main_loop_quit (g_app.loop);
   }
 }
 
@@ -642,10 +657,10 @@ start_feed (GstElement * pipeline, guint size, AppData * app)
   if (app->sourceid == 0) {
 
     GST_DEBUG ("start feeding");
-    prepare_buffer((GstAppSrc*)app->appsrc, file_i);
+    prepare_buffer((GstAppSrc*)app->appsrc, file_i++);
     g_main_context_iteration(g_main_context_default(),FALSE);
-    
-    file_i=file_i+1;
+    //file_i=file_i+1;
+    //delete
   }
 }
 
@@ -669,6 +684,11 @@ stop_feed (GstElement * pipeline, AppData * app)
 int
 main (int argc, char ** argv)
 {
+
+  //int *a = new int; 
+  //_CrtDumpMemoryLeaks();
+
+
   const gchar tf_model_path[] = "./tf_model";
 
   gchar *str_pipeline;
@@ -699,9 +719,6 @@ main (int argc, char ** argv)
   //_check_cond_err (g_app.loop != NULL);
 
   /* init pipeline */
-
-
-
    str_pipeline =
       g_strdup_printf
       ("appsrc name=src ! videoconvert ! videoscale ! video/x-raw,width=%d,height=%d,format=RGB ! tee name=t_raw "
@@ -714,8 +731,6 @@ main (int argc, char ** argv)
       "outputtype=float32,float32,float32,float32 ! "
       "tensor_sink name=tensor_sink ",
       VIDEO_WIDTH, VIDEO_HEIGHT, g_app.tf_info.model_path);
-  //#endif
-
   g_assert(str_pipeline);
 
   g_app.pipeline = gst_parse_launch (str_pipeline, NULL);
@@ -732,7 +747,7 @@ main (int argc, char ** argv)
              "format", G_TYPE_STRING, "RGB16",
              "width", G_TYPE_INT, 630, //@dw 20.03.09
              "height", G_TYPE_INT, 64,
-             "framerate", GST_TYPE_FRACTION, 25, 1,
+             "framerate", GST_TYPE_FRACTION, 0, 1,
              NULL), NULL);
   
   /* setup appsrc */
@@ -746,12 +761,10 @@ main (int argc, char ** argv)
 
 
   // setup pipeline
- 
-
   g_signal_connect (g_app.appsrc, "need-data", G_CALLBACK (start_feed), &g_app);
   g_signal_connect (g_app.appsrc, "enough-data", G_CALLBACK (stop_feed), &g_app);
-
  
+
   /* bus and message callback */
   g_app.bus = gst_element_get_bus (g_app.pipeline);
   //_check_cond_err (g_app.bus != NULL);
@@ -781,11 +794,9 @@ main (int argc, char ** argv)
   /* set window title */
   set_window_title ("img_tensor", "NNStreamer Example");
 
- 
   /* run main loop */
   g_main_loop_run (g_app.loop);
 
-   printf("asdfasdf\n");
   /* quit when received eos or error message */
   g_app.running = FALSE;
 
@@ -804,6 +815,7 @@ main (int argc, char ** argv)
   gst_object_unref (element);
 
 
+//_CrtDumpMemoryLeaks();
 
 error:
   _print_log ("close app..");
