@@ -381,6 +381,14 @@ get_detected_objects (
       object.x, object.y, object.width, object.height, object.prob);
 
     g_app.detected_objects.push_back (object);
+
+    printf("score => %s: x:%3d, y:%3d, w:%3d, h:%3d, prob:%.2f \n",
+      (gchar *) g_list_nth_data (g_app.tf_info.labels, object.class_id),
+      object.x, object.y, object.width, object.height, object.prob);
+
+    FILE *fp = fopen("score.txt", "w"); 
+
+    
   }
   _print_log("========================================================");
 
@@ -425,6 +433,7 @@ new_data_cb (GstElement * element, GstBuffer * buffer, gpointer user_data)
   g_assert (gst_memory_map (mem_scores, &info_scores, GST_MAP_READ));
   g_assert (info_scores.size == DETECTION_MAX * 4);
   detection_scores = (gfloat *) info_scores.data;
+
 
   /* detection_boxes */
   mem_boxes = gst_buffer_get_memory (buffer, 3);
@@ -559,6 +568,7 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
   char filename[16];
   char s2[13]="data_point/";
   
+  
   if(10>index){
     sprintf(filename,"000000000%d.txt",index);
   }else if(99>= index && index>=10){
@@ -567,12 +577,12 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
     sprintf(filename,"0000000%d.txt", index);
   }
   
-  
   char *filename2=strcat(s2, filename);
   printf("%s\n", filename2);
 
   FILE* fp;
   fp = fopen(filename2,"r");
+ 
   double read_num, x, y, z;
   double xy_theta, z_theta, range;
   double val = 57.2958;
@@ -747,7 +757,7 @@ main (int argc, char ** argv)
              "format", G_TYPE_STRING, "RGB16",
              "width", G_TYPE_INT, 630, //@dw 20.03.09
              "height", G_TYPE_INT, 64,
-             "framerate", GST_TYPE_FRACTION, 0, 1,
+             "framerate", GST_TYPE_FRACTION, 25, 1,
              NULL), NULL);
   
   /* setup appsrc */
@@ -815,7 +825,6 @@ main (int argc, char ** argv)
   gst_object_unref (element);
 
 
-//_CrtDumpMemoryLeaks();
 
 error:
   _print_log ("close app..");
