@@ -568,30 +568,16 @@ draw_overlay_cb (GstElement * overlay, cairo_t * cr, guint64 timestamp,
 void
 bilienar_interpol(int rate_z, int rate_xy){
 
-  //interpolation
   for(int y=0; y<639; y++){
     
     for(int x=0; x<1023; x++){
       
-      int px =(int)(x/rate_z);
-      int py =(int)(y/rate_xy);
-
-      double fx1 = (double)x/(double)rate_z-px;
-      double fy1 = (double)y/(double)rate_xy-py;
+      double fx1 = (double)(x/rate_z)-(int)(x/rate_z);
+      double fy1 = (double)(y/rate_xy)-(int)(y/rate_xy);
       double fx2 = 1-fx1;
       double fy2 = 1-fy1;
 
-      double w1 = fx2 * fy2;
-      double w2 = fx1 * fy2;
-      double w3 = fx2 * fy1;
-      double w4 = fx1 * fy1;
-        
-      double p1 = frame[y][x];
-      double p2 = frame[y][x+1];
-      double p3 = frame[y+1][x];
-      double p4 = frame[y+1][x+1];
-
-      double mk_range= w1*p1 + w2*p2 + w3*p3 +w4*p4;
+      double mk_range= (fx2 * fy2)*frame[y][x] + (fx1 * fy2)*frame[y][x+1] + (fx2 * fy1)*frame[y+1][x] +(fx1 * fy1)*frame[y+1][x+1];
       frame[y][x]=mk_range;
     }   
   }
