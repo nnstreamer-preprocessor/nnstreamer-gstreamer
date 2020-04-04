@@ -565,88 +565,8 @@ draw_overlay_cb (GstElement * overlay, cairo_t * cr, guint64 timestamp,
 
 
 
-static void prepare_buffer(GstAppSrc * appsrc, int index) {
-
-  //static gboolean white = FALSE;
-  static GstClockTime timestamp = 0;
-  GstBuffer *buffer;
-  guint size;
-  GstFlowReturn ret;
-
-  ////////////////////////////////////
-  
-  char filename[16]; 
-  char s2[13]="data_point/";
-  
-  
-  if(10>index){
-    sprintf(filename,"000000000%d.txt",index);
-  }else if(99>= index && index>=10){
-    sprintf(filename,"00000000%d.txt", index);
-  }else if(999>= index && index>=100){
-    sprintf(filename,"0000000%d.txt", index);
-  }
-
-
-  char *filename2=strcat(s2, filename);
-  printf("%s\n", filename2);
-
-  FILE* fp;
-  fp = fopen(filename2,"r");
- 
-  double read_num, x, y, z;
-  double xy_theta, z_theta, range;
-  double val = 57.2958;
-
-  int cnt=1;
- 
-  int rate_z=3;
-  int rate_xy=3;
-
-  while(fgetc(fp) != EOF){
-    fscanf(fp, "%lf", &read_num);
-    if(cnt%4==0){
-        //calculate
-        xy_theta=atan(y/x)*val+45;
-        z_theta=round(atan(z/x)*val);//64
-        if( 0<z_theta & z_theta<=64 & 0< xy_theta & xy_theta<=89 ){
-               
-            range=pow(sqrt(x*x+y*y+z*z),3.0);//*100;
-            
-           //if(range>1000){
-           // range=0;
-           //}
-            
-            z_theta=round(z_theta*rate_z);//3
-            xy_theta=round(xy_theta*rate_xy);//7 14
-
-
-            frame[(int)z_theta][(int)xy_theta]=range;
-  
-
-            //FILE *fp3 = fopen("test.txt", "a");
-    
-            //fprintf(fp3, "%d :x=%f  y=%f  z=%f i=%f\n", file_i,x, y , z, read_num);
-
-            //fclose(fp3);
-        }
-     
-    }else if(cnt%4==1){
-        //x
-        x=read_num;   
-    }else if(cnt%4==2){
-        //y
-        y=read_num;     
-    }else if(cnt%4==3){
-        //z
-        z=read_num;      
-    }
-    cnt=cnt+1;
-  }
-  
-  fclose(fp);
-  ////////////////////////////////////
-
+void
+bilienar_interpol(int rate_z, int rate_xy){
 
   //interpolation
   for(int y=0; y<639; y++){
@@ -673,17 +593,93 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
 
       double mk_range= w1*p1 + w2*p2 + w3*p3 +w4*p4;
       frame[y][x]=mk_range;
+    }   
+  }
+}
 
-    }
-    
+static void prepare_buffer(GstAppSrc * appsrc, int index) {
+
+  //static gboolean white = FALSE;
+  static GstClockTime timestamp = 0;
+  GstBuffer *buffer;
+  guint size;
+  GstFlowReturn ret;
+
+
+  ////////////////////////////////////
+  char filename[16]; 
+  char s2[13]="data_point/";
+  
+  if(10>index){
+    sprintf(filename,"000000000%d.txt",index);
+  }else if(99>= index && index>=10){
+    sprintf(filename,"00000000%d.txt", index);
+  }else if(999>= index && index>=100){
+    sprintf(filename,"0000000%d.txt", index);
   }
 
+  char *filename2=strcat(s2, filename);
+  printf("%s\n", filename2);
 
-  /////////////////////
+  FILE* fp;
+  fp = fopen(filename2,"r");
+ 
+  double read_num, x, y, z;
+  double xy_theta, z_theta, range;
+  double val = 57.2958;
+
+  int cnt=1;
+ 
+  int rate_z=3;
+  int rate_xy=3;
+
+  while(fgetc(fp) != EOF){
+    fscanf(fp, "%lf", &read_num);
+    if(cnt%4==0){
+        //calculate
+        xy_theta=atan(y/x)*val+45;
+        z_theta=round(atan(z/x)*val);//64
+        if( 0<z_theta & z_theta<=64 & 0< xy_theta & xy_theta<=89 ){
+               
+          range=pow(sqrt(x*x+y*y+z*z),3.0);//*100;
+            
+          //if(range>1000 || 300>range){
+          //  range=0;
+          //}
+            
+          z_theta=round(z_theta*rate_z);//3
+          xy_theta=round(xy_theta*rate_xy);//7 14
+
+
+          frame[(int)z_theta][(int)xy_theta]=range;
+
+            //FILE *fp3 = fopen("test.txt", "a");
+            //fprintf(fp3, "%d :x=%f  y=%f  z=%f i=%f\n", file_i,x, y , z, read_num);
+            //fclose(fp3);
+
+        }    
+    }else if(cnt%4==1){
+        //x
+        x=read_num;   
+    }else if(cnt%4==2){
+        //y
+        y=read_num;     
+    }else if(cnt%4==3){
+        //z
+        z=read_num;      
+    }
+    cnt=cnt+1;
+  }
+  
+  fclose(fp);
+  
+  //bilienar_interpol(rate_z, rate_xy);
+
+ ////////////////////////
+
   size = 1024*640*2;//630*64*2; 
   buffer = gst_buffer_new_wrapped_full( (GstMemoryFlags)0, (gpointer)frame, size, 0, size, NULL, NULL );
 
-  ////////////////////////
 
   GST_BUFFER_PTS (buffer) = timestamp;
   GST_BUFFER_DURATION (buffer) = gst_util_uint64_scale_int (1, GST_SECOND, 4);
@@ -697,6 +693,7 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
     g_main_loop_quit (g_app.loop);
   }
 }
+
 
 //////////////////////////////////////////
 static void
@@ -740,6 +737,7 @@ stop_feed (GstElement * pipeline, AppData * app)
 
 
 /////////////////////////////////////////
+
 
 /**
  * @brief Main function.
