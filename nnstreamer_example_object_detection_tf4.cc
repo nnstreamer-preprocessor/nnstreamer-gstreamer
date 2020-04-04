@@ -566,10 +566,9 @@ draw_overlay_cb (GstElement * overlay, cairo_t * cr, guint64 timestamp,
 
 
 void
-bilienar_interpol(int rate_z, int rate_xy){
+bilinear_interpol(int rate_z, int rate_xy){
 
-  for(int y=0; y<639; y++){
-    
+  for(int y=0; y<639; y++){  
     for(int x=0; x<1023; x++){
       
       double fx1 = (double)(x/rate_z)-(int)(x/rate_z);
@@ -659,7 +658,7 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
   
   fclose(fp);
   
-  //bilienar_interpol(rate_z, rate_xy);
+  bilinear_interpol(rate_z, rate_xy);
 
  ////////////////////////
 
