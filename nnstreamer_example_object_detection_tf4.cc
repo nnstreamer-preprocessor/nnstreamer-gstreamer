@@ -62,7 +62,8 @@
 
 // @yh 20.03.09 As you can see, this below code is made by DH.kim
 //double frame[640][64]={0,}; //@dw 20.03.09
-int frame[640][1024]={0,}; //@dw 20.03.09
+//int frame[640][1024]={0,}; //@dw 20.03.09
+
 //double frame2[1024][640]={0,};
 int file_i=0;
 
@@ -91,8 +92,8 @@ int file_i=0;
 //     } \
 //   } while (0)
 
-#define VIDEO_WIDTH     1024//630
-#define VIDEO_HEIGHT    640//64
+#define VIDEO_WIDTH     1024//1024//630
+#define VIDEO_HEIGHT    192//640//64
 
 #define BOX_SIZE        4
 #define LABEL_SIZE      91
@@ -566,9 +567,9 @@ draw_overlay_cb (GstElement * overlay, cairo_t * cr, guint64 timestamp,
 
 
 void
-bilinear_interpol(int rate_z, int rate_xy){
+bilinear_interpol(int frame[][1024], int rate_z, int rate_xy){
 
-  for(int y=0; y<639; y++){  
+  for(int y=0; y<191; y++){  
     for(int x=0; x<1023; x++){
       
       double fx1 = (double)(x/rate_z)-(int)(x/rate_z);
@@ -590,7 +591,7 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
   guint size;
   GstFlowReturn ret;
 
-
+  int frame[192][1024]={0,};
   ////////////////////////////////////
   char filename[16]; 
   char s2[13]="data_point/";
@@ -610,38 +611,30 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
   fp = fopen(filename2,"r");
  
   double read_num, x, y, z;
-  double xy_theta, z_theta, range;
-  double val = 57.2958;
-
-  int cnt=1;
- 
-  int rate_z=3;
-  int rate_xy=3;
+  double xy_theta, z_theta, range, val = 57.2958;
+  int cnt=1, rate_z=3, rate_xy=5;
 
   while(fgetc(fp) != EOF){
     fscanf(fp, "%lf", &read_num);
     if(cnt%4==0){
         //calculate
-        xy_theta=atan(y/x)*val+45;
-        z_theta=round(atan(z/x)*val);//64
-        if( 0<z_theta & z_theta<=64 & 0< xy_theta & xy_theta<=89 ){
-               
-          range=pow(sqrt(x*x+y*y+z*z),3.0);//*100;
+        if(z>-1.5){
             
-          //if(range>1000 || 300>range){
-          //  range=0;
-          //}
-            
-          z_theta=round(z_theta*rate_z);//3
-          xy_theta=round(xy_theta*rate_xy);//7 14
+            xy_theta=atan(y/x)*val+45;//45;
+            z_theta=atan(z/x)*val;//64
+            if( 0<z_theta & z_theta<64 & 0< xy_theta & xy_theta<90 ){
+              
+              range=pow(sqrt(x*x+y*y+z*z),3.0)+pow(read_num*10,2.0);
+                
+              //if(range>2000){
+              //  range=0;
+              //}
+                
+              z_theta=round(z_theta*rate_z);//3
+              xy_theta=round(xy_theta*rate_xy);//7 14
 
-
-          frame[(int)z_theta][(int)xy_theta]=range;
-
-            //FILE *fp3 = fopen("test.txt", "a");
-            //fprintf(fp3, "%d :x=%f  y=%f  z=%f i=%f\n", file_i,x, y , z, read_num);
-            //fclose(fp3);
-
+              frame[(int)z_theta][(int)xy_theta]=range;
+            }
         }    
     }else if(cnt%4==1){
         //x
@@ -658,11 +651,11 @@ static void prepare_buffer(GstAppSrc * appsrc, int index) {
   
   fclose(fp);
   
-  bilinear_interpol(rate_z, rate_xy);
+  bilinear_interpol(frame, rate_z, rate_xy);
 
  ////////////////////////
 
-  size = 1024*640*2;//630*64*2; 
+  size = 1024*192*2;//630*64*2; 
   buffer = gst_buffer_new_wrapped_full( (GstMemoryFlags)0, (gpointer)frame, size, 0, size, NULL, NULL );
 
 
@@ -771,7 +764,7 @@ main (int argc, char ** argv)
       "t_raw. ! queue ! videoconvert ! cairooverlay name=tensor_res ! ximagesink name=img_tensor "
       "t_raw. ! queue leaky=2 max-size-buffers=2 ! videoscale ! tensor_converter ! "
       "tensor_filter framework=tensorflow model=%s "
-      "input=3:640:1024:1 inputname=image_tensor inputtype=uint8 "
+      "input=3:192:1024:1 inputname=image_tensor inputtype=uint8 "
       "output=1,100:1,100:1,4:100:1 "
       "outputname=num_detections,detection_classes,detection_scores,detection_boxes "
       "outputtype=float32,float32,float32,float32 ! "
@@ -792,7 +785,7 @@ main (int argc, char ** argv)
       gst_caps_new_simple ("video/x-raw",
              "format", G_TYPE_STRING, "RGB16",
              "width", G_TYPE_INT, 1024, //@dw 20.03.09
-             "height", G_TYPE_INT, 640,
+             "height", G_TYPE_INT, 192,
              "framerate", GST_TYPE_FRACTION, 0, 1,
              NULL), NULL);
   
